@@ -8,11 +8,16 @@ package app;
 import java.awt.Dimension;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import javax.swing.JFrame;
 import ws3dproxy.CommandExecException;
 import ws3dproxy.WS3DProxy;
 import ws3dproxy.model.Creature;
+import ws3dproxy.model.Leaflet;
 import ws3dproxy.model.Thing;
 import ws3dproxy.model.World;
 import ws3dproxy.model.WorldPoint;
@@ -23,63 +28,92 @@ import ws3dproxy.model.WorldPoint;
  */
 public class mainFrame extends JFrame implements KeyListener {
 
-    private static Creature creature;
-
-    private static void CreatureCreate() {
-        WS3DProxy proxy = new WS3DProxy();
-        try {
-            World w = World.getInstance();
-            w.reset();
-            World.createFood(0, 350, 75);
-            World.createFood(0, 100, 220);
-            World.createFood(0, 250, 210);
-            creature = proxy.createCreature(100, 450, 0);
-            creature.start();
-            WorldPoint position = creature.getPosition();
-            double pitch = creature.getPitch();
-            double fuel = creature.getFuel();
-            
-        } catch (CommandExecException e) {
-            System.out.println("Erro capturado");
-        }
-    }
+    private static World w;
+    private static Creature creatureApp;
+    List<String> HideThigs = new ArrayList<>();
 
     private mainDraw draw;
 
     public void keyPressed(KeyEvent e) {
-        System.out.println("keyPressed");
+        //System.out.println("keyPressed");
     }
 
     public void keyReleased(KeyEvent e) {
-        try {
+        try {        
+
             if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
                 draw.moveRight();
-                creature.rotate(1);
-                creature.updateState();
+                creatureApp.rotate(1);
+
             } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                creature.rotate(-1);
+                creatureApp.rotate(-1);
                 draw.moveLeft();
-                creature.updateState();
+
             } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                creature.move(-1.0, -1.0, 1.0);
-                creature.updateState();
+                creatureApp.move(-1.0, -1.0, 1.0);
+
                 draw.moveDown();
             } else if (e.getKeyCode() == KeyEvent.VK_UP) {
                 draw.moveUp();
-                creature.move(1.0, 1.0, 1.0);
-                creature.updateState();
+                creatureApp.move(1.0, 1.0, 1.0);
+
             } else if (e.getKeyCode() == KeyEvent.VK_C) {
-                
-               List<Thing> thingsList =  creature.getThingsInVision();
-                
+
+                List<Thing> thingsList = creatureApp.getThingsInVision();
+                String nome = creatureApp.getName();
+                String nomeThings = creatureApp.getThingsNames();
+
                 for (Thing t : thingsList) {
                     System.out.println(t.getName());
                     System.out.println(t.getCategory());
-                   double distance =  creature.calculateDistanceTo(t);
+                    double distance = creatureApp.calculateDistanceTo(t);
+
+                    if (creatureApp.calculateDistanceTo(t) <= 50) {
+                        creatureApp.eatIt(t.getName());
+
+                    }
                 }
-               
-                
-                creature.updateState();
+
+            } else if (e.getKeyCode() == KeyEvent.VK_S) {
+                List<Thing> thingsList = creatureApp.getThingsInVision();
+
+                for (Thing t : thingsList) {
+                    double distance = creatureApp.calculateDistanceTo(t);
+                    if (creatureApp.calculateDistanceTo(t) <= 50) {
+                        creatureApp.putInSack(t.getName());
+                        System.out.println("Put In Sack: " + t.getName());
+                    }
+                }
+            } else if (e.getKeyCode() == KeyEvent.VK_H) {
+                List<Thing> thingsList = creatureApp.getThingsInVision();
+
+                for (Thing t : thingsList) {
+                    double distance = creatureApp.calculateDistanceTo(t);
+                    if (creatureApp.calculateDistanceTo(t) <= 100) {
+                        creatureApp.hideIt(t.getName());
+
+                        HideThigs.add(t.getName());
+                        System.out.println("HideIt: " + t.getName());
+                    }
+                }
+
+            } else if (e.getKeyCode() == KeyEvent.VK_U) {
+
+                if (HideThigs != null) {
+                    for (String t : HideThigs) {
+                        creatureApp.unhideIt(t);
+                    }
+                }
+            } else if (e.getKeyCode() == KeyEvent.VK_L) {
+                List<Leaflet> leaflets = creatureApp.getLeaflets();
+
+                for (Leaflet item : leaflets) {
+                    System.out.println("getLeaflets: " + item.getID());
+                    creatureApp.genLeaflet();
+                    creatureApp.deliverLeaflet(item.getID().toString());
+                }
+            } else if (e.getKeyCode() == KeyEvent.VK_B) {
+                creatureApp.updateBag();
             }
 
         } catch (Exception ex) {
@@ -88,7 +122,7 @@ public class mainFrame extends JFrame implements KeyListener {
     }
 
     public void keyTyped(KeyEvent e) {
-        System.out.println("keyTyped");
+        //System.out.println("keyTyped");
     }
 
     public mainFrame() {
@@ -100,15 +134,25 @@ public class mainFrame extends JFrame implements KeyListener {
 
     public static void main(String[] args) {
 
-        CreatureCreate();
+        //Create Object
+        try {
+            WorldApp.CreateAndRestartWorld();
+            creatureApp = CreatureApp.CreatureCreate();
+
+            WorldApp.TimeGameCreateFood();
+            WorldApp.OnTime(creatureApp);
+
+        } catch (Exception e) {
+            System.out.println("Erro:" + e.getMessage());
+        }
 
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 mainFrame frame = new mainFrame();
                 frame.setTitle("Square Move Practice");
                 frame.setResizable(false);
-                frame.setSize(300, 300);
-                frame.setMinimumSize(new Dimension(600, 600));
+                frame.setSize(170, 170);
+                frame.setMinimumSize(new Dimension(170, 170));
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 frame.getContentPane().add(frame.draw);
                 frame.pack();
